@@ -2,10 +2,14 @@ import datetime
 import pickle
 import re
 from tkinter import *
-from tkinter import messagebox
 from tkinter.ttk import Combobox
 from tkcalendar import Calendar
 import socket
+from PIL import Image, ImageTk
+
+info_img = "info.png"
+ask_yes_no_img = "ask_yes_no.png"
+error_img = "error.png"
 
 client = socket.socket()
 client.connect(("localhost", 65432))
@@ -31,7 +35,9 @@ class Task:
         self.owner = owner
 
 def login(frame):
-    frame.pack_forget()
+    if frame and frame.winfo_exists():
+        frame.pack_forget()
+
     login_frame = Frame(window,bg='#0D0527')
     login_frame.pack(expand=True, anchor='center')
 
@@ -62,21 +68,26 @@ def login(frame):
     login_button = Button(login_frame, text="Log In", font=("Ariel", 20, "bold"), fg='black', bg='#4ECDC4',activebackground="#292F36", activeforeground="#F5EEDC", padx=10, pady=10, command=lambda: login_work(login_frame, username_entry, password_entry))
     login_button.grid(row=4,column=1, padx=10, pady=10, sticky="w")
 
+    window.grab_set()
+    window.wait_window()
+
 def login_work(frame, username_entry, password_entry):
     username = username_entry.get()
     password = password_entry.get()
     result = out_communication(f"check_login_user|{username}|{password}")
     if result is True:
-        messagebox.showinfo(title="Login Success", message="You have successfully logged in")
+        show_info_msg("Login Success","You have successfully logged in")
         dashboard(frame, username)
     elif result is False:
-        messagebox.showwarning(title="Login Failed", message=f"login Failed Check Please Username and Password")
+        show_error_msg("Login Failed", "login Failed Check Please Username and Password")
     else:
-        messagebox.showwarning(title="Login Failed", message=f"login Failed Due to an Error")
-        window.destroy()
+        show_error_msg("Login Failed", "login Failed Due to an Error")
+        login(frame)
 
 def signup(frame):
-    frame.pack_forget()
+    if frame and frame.winfo_exists():
+        frame.pack_forget()
+
     signup_frame = Frame(window,bg='#0D0527')
     signup_frame.pack(expand=True, anchor='center')
 
@@ -113,38 +124,46 @@ def signup(frame):
     signup_button = Button(signup_frame, text="Sign Up", font=("Ariel", 20, "bold"), fg='black', bg='#4ECDC4',activebackground="#292F36", activeforeground="#F5EEDC", padx=10, pady=10, command=lambda : signup_work(signup_frame, email_entry, username_entry, password_entry))
     signup_button.grid(row=5,column=1, padx=10, pady=10, sticky="w")
 
+    window.grab_set()
+    window.wait_window()
+
 def signup_work(frame, email_entry, username_entry, password_entry):
     email = str(email_entry.get())
     username = str(username_entry.get())
     password = str(password_entry.get())
 
-    if username.find(" ") != -1:
-        messagebox.showwarning(title="Incorrect Username", message="Please Check Your Username Again")
+    if " " in username:
+        show_error_msg("Incorrect Username", "Username should not contain spaces")
         return
-    if email.find(" ") != -1:
-        messagebox.showwarning(title="Incorrect Email", message="Please Check Your Email Again")
+
+    if " " in email:
+        show_error_msg("Incorrect Email", "Email should not contain spaces")
         return
-    if len(username) < 3:
-        messagebox.showwarning(title="Username Length Error",message="Please Check Your Username Again Username should be higher than 4 character")
+
+    if len(username) < 4:
+        show_error_msg("Username Length Error", "Username should be at least 4 characters")
         return
+
     if len(password) < 8:
-        messagebox.showwarning(title="Password Length Error",message="Please Check Your Password Again Password Less than 8 Character")
+        show_error_msg("Password Length Error", "Password must be at least 8 characters")
         return
 
     domain = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
     if not re.fullmatch(domain, email):
-        messagebox.showwarning(title="Incorrect Email", message="Please Check Your Email Again Wrong Domain")
+        show_error_msg("Incorrect Email", "Please Check Your Email Again Wrong Domain")
         return
     result = out_communication(f"otp_send|{email}|{username}")
     if result is False:
-        messagebox.showwarning(title="Signup Error", message=" Sign up Failed Username or Email Already Exist")
+        show_error_msg("Signup Error"," Sign up Failed Username or Email Already Exist")
     elif result is None:
-        messagebox.showwarning(title="Signup Error", message=" Sign up Failed due to an Error")
+        show_error_msg("Signup Error"," Sign up Failed due to an Error")
     else:
         otp_verify(frame, result, email, username, password)
 
 def otp_verify(frame, given_otp, email, username, password):
-    frame.pack_forget()
+    if frame and frame.winfo_exists():
+        frame.pack_forget()
+
     otp_verify_frame = Frame(window,bg='#0D0527')
     otp_verify_frame.pack(expand=True, anchor='center')
 
@@ -172,21 +191,26 @@ def otp_verify(frame, given_otp, email, username, password):
     otp_verify_button = Button(otp_verify_frame, text="Verify Email", font=("Ariel", 20, "bold"), fg='black', bg='#4ECDC4',activebackground="#292F36", activeforeground="#F5EEDC", padx=10, pady=10, command=lambda: save_user(otp_verify_frame, given_otp, otp_entry, email, username, password))
     otp_verify_button.grid(row=4,column=1, padx=10, pady=10)
 
+    window.grab_set()
+    window.wait_window()
+
 def save_user(frame, otp_input, otp_entry, email, username, password):
     otp = otp_entry.get()
     if otp_input == otp:
         result = out_communication(f"insert_user|{email}|{username}|{password}")
         if result is True:
-            messagebox.showinfo(title="User Created", message=f"User with username: {username}\nhas Been Successfully Created")
+            show_info_msg("User Created",f"User with username: {username}\nhas Been Successfully Created")
             login(frame)
         else:
-            messagebox.showwarning(title="User Creation Failed", message=f"User Creation has been Failed Due to an Error")
+            show_error_msg("User Creation Failed", "User Creation has been Failed Due to an Error")
     else:
-        messagebox.showwarning(title="Email Verification Failed", message="Email Verification Failed due to Wrong OTP Entered returning to Sign Up")
+        show_error_msg("Email Verification Failed", "Email Verification Failed due to Wrong OTP Entered returning to Sign Up")
         signup(frame)
 
 def dashboard(frame, username):
-    frame.pack_forget()
+    if frame and frame.winfo_exists():
+        frame.pack_forget()
+
     dashboard_frame = Frame(window, bg='#0D0527')
     dashboard_frame.pack(expand=True, anchor='center')
 
@@ -242,7 +266,7 @@ def dashboard(frame, username):
     scroll_canvas.create_window((0, 0), window=all_task_frame)
     result = get_task(f"fetch_tasks|{username}")
     if result is None:
-        messagebox.showwarning(title="Task Fetching Failed", message=f"Fetching tasks failed due to an Error")
+        show_error_msg("Task Fetching Failed", "Fetching tasks failed due to an Error")
     else:
         for task in result:
             task_show_frame = Frame(all_task_frame)
@@ -264,9 +288,13 @@ def dashboard(frame, username):
     scroll_canvas.configure(scrollregion=scroll_canvas.bbox("all"))
     scroll_canvas.yview_moveto(0)
 
+    window.grab_set()
+    window.wait_window()
+
 def search_task(frame, mainframe, username, search_entry, priority_combobox, status_combobox, type_combobox):
-    for widget in mainframe.winfo_children():
-        widget.destroy()
+    if frame and frame.winfo_exists():
+        for widget in mainframe.winfo_children():
+            widget.destroy()
 
     scroll_canvas = Canvas(mainframe, width=1120, height=400)
     scroll_canvas.pack(side=LEFT, fill=BOTH, expand=1)
@@ -302,8 +330,13 @@ def search_task(frame, mainframe, username, search_entry, priority_combobox, sta
     scroll_canvas.configure(scrollregion=scroll_canvas.bbox("all"))
     scroll_canvas.yview_moveto(0)
 
+    window.grab_set()
+    window.wait_window()
+
 def add_task(frame, username):
-    frame.pack_forget()
+    if frame and frame.winfo_exists():
+        frame.pack_forget()
+
     add_task_frame = Frame(window, bg='#0D0527')
     add_task_frame.pack(expand=True, anchor='center')
 
@@ -366,73 +399,78 @@ def add_task(frame, username):
     add_task_button = Button(add_task_frame, text="Add Task", font=("Ariel", 20, "bold"), fg='black', bg='#4ECDC4',activebackground="#292F36", activeforeground="#F5EEDC", padx=10, pady=10, command=lambda :add_task_work(add_task_frame, username, title_entry, description_text, due_date_entry, due_time_hr_combobox, due_time_min_combobox, due_time_am_pm_combobox, priority_combobox, status_combobox, task_type_combobox))
     add_task_button.grid(row=8,column=1, padx=10, pady=10, sticky="w")
 
+    window.grab_set()
+    window.wait_window()
+
 def add_task_work(frame, username, title_entry, description_text, due_date_entry, due_time_hr_combobox, due_time_min_combobox, due_time_am_pm_combobox, priority_combobox, status_combobox, task_type_combobox):
     if title_entry.get() == "":
-        messagebox.showwarning(title="Title Empty", message="Please enter a title in the Title field. It cannot be empty.")
+        show_error_msg("Title Empty", "Please enter a title in the Title field. It cannot be empty.")
         return
     else:
         title = title_entry.get()
 
     if description_text.get("1.0", "end-1c") == "":
-        messagebox.showwarning(title="Description Empty", message="Please enter a Description in the Description field. It cannot be empty.")
+        show_error_msg("Description Empty", "Please enter a Description in the Description field. It cannot be empty.")
         return
     else:
         description = description_text.get("1.0", "end-1c")
 
     if due_date_entry.get_date() == "":
-        messagebox.showwarning(title="Due Date Empty", message="Please enter a Due Date in the Due Date field. It cannot be empty.")
+        show_error_msg("Due Date Empty", "Please enter a Due Date in the Due Date field. It cannot be empty.")
         return
     else:
         due_date = due_date_entry.get_date()
 
     if due_time_hr_combobox.get() == "":
-        messagebox.showwarning(title="Due Time Hour Empty", message="Please enter a Due Time Hour in the Due Time Hour field. It cannot be empty.")
+        show_error_msg("Due Time Hour Empty", "Please enter a Due Time Hour in the Due Time Hour field. It cannot be empty")
         return
     else:
         due_time_hr = f"{due_time_hr_combobox.get()}"
 
     if due_time_min_combobox.get() == "":
-        messagebox.showwarning(title="Due Time minute Empty", message="Please enter a Due Time minute in the Due Time Hour field. It cannot be empty.")
+        show_error_msg("Due Time minute Empty", "Please enter a Due Time minute in the Due Time Hour field. It cannot be empty.")
         return
     else:
         due_time_min = due_time_hr_combobox.get()
 
     if due_time_am_pm_combobox.get() == "":
-        messagebox.showwarning(title="Due Time AM/PM Empty", message="Please enter a Due Time AM/PM in the Due Time Hour field. It cannot be empty.")
+        show_error_msg("Due Time AM/PM Empty", "Please enter a Due Time AM/PM in the Due Time Hour field. It cannot be empty.")
         return
     elif due_time_am_pm_combobox.get() not in ['AM', 'PM', 'am', 'pm', 'Am','Pm','pM','aM']:
-        messagebox.showwarning(title="Due Time AM/PM Wrong",message="Please enter Correct Due Time AM/PM in the Due Time AM/PM field.")
+        show_error_msg("Due Time AM/PM Wrong","Please enter Correct Due Time AM/PM in the Due Time AM/PM field.")
         return
     else:
         due_time_am_pm = due_time_am_pm_combobox.get().upper()
 
     due_time = f"{due_time_hr}:{due_time_min} {due_time_am_pm}"
     if priority_combobox.get() == "":
-        messagebox.showwarning(title="Priority Empty", message="Please enter a Priority in the Priority field. It cannot be empty.")
+        show_error_msg("Priority Empty", "Please enter a Priority in the Priority field. It cannot be empty.")
         return
     else:
         priority = priority_combobox.get()
     if status_combobox.get() == "":
-        messagebox.showwarning(title="Status Empty", message="Please enter a Status in the Status field. It cannot be empty.")
+        show_error_msg("Status Empty", "Please enter a Status in the Status field. It cannot be empty.")
         return
     else:
         status = status_combobox.get()
     if task_type_combobox.get() == "":
-        messagebox.showwarning(title="Task Type Empty", message="Please Enter Title in the Title Entry")
+        show_error_msg("Task Type Empty", "Please Enter Title in the Title Entry")
         return
     else:
         task_type = task_type_combobox.get()
 
     result = out_communication(f"insert_task|{title}|{description}|{due_date}|{due_time}|{priority}|{status}|{task_type}|{username}")
     if result is True:
-        messagebox.showinfo(title="Task Saved", message=f"Task\n'{title}'\nSaved successfully.")
+        show_info_msg("Task Saved", f"Task\n'{title}'\nSaved successfully.")
         dashboard(frame, username)
     else:
-        messagebox.showwarning(title="Task Creation Failed", message=f"Task creation has been failed due to an Error")
+        show_error_msg("Task Creation Failed", f"Task creation has been failed due to an Error")
         return
 
 def show_edit_task(frame, username, obj):
-    frame.pack_forget()
+    if frame and frame.winfo_exists():
+        frame.pack_forget()
+
     show_edit_task_frame = Frame(window, bg='#0D0527')
     show_edit_task_frame.pack(expand=True, anchor='center')
 
@@ -528,57 +566,60 @@ def show_edit_task(frame, username, obj):
     save_changes_task_button = Button(show_edit_task_frame, text="Save Changes", font=("Ariel", 20, "bold"), fg='black', bg='#4ECDC4', activebackground="#292F36", activeforeground="#F5EEDC", padx=10, pady=10, command=lambda: save_change_work(show_edit_task_frame, username, title_entry, description_text, due_date_entry, due_time_hr_combobox, due_time_min_combobox, due_time_am_pm_combobox, priority_combobox, status_combobox, task_type_combobox, obj))
     save_changes_task_button.grid(row=8, column=0, pady=10, sticky="w")
 
+    window.grab_set()
+    window.wait_window()
+
 def save_change_work(frame, username, title_entry, description_text, due_date_entry, due_time_hr_combobox, due_time_min_combobox, due_time_am_pm_combobox, priority_combobox, status_combobox, task_type_combobox, obj):
     if title_entry.get() == "":
-        messagebox.showwarning(title="Title Empty", message="Please enter a title in the Title field. It cannot be empty.")
+        show_error_msg("Title Empty", "Please enter a title in the Title field. It cannot be empty.")
         return
     else:
         title = title_entry.get()
     if description_text.get("1.0", "end-1c") == "":
-        messagebox.showwarning(title="Description Empty", message="Please enter a Description in the Description field. It cannot be empty.")
+        show_error_msg("Description Empty", "Please enter a Description in the Description field. It cannot be empty.")
         return
     else:
         description = description_text.get("1.0", "end-1c")
     if due_date_entry.get_date() == "":
-        messagebox.showwarning(title="Due Date Empty", message="Please enter a Due Date in the Due Date field. It cannot be empty.")
+        show_error_msg("Due Date Empty", "Please enter a Due Date in the Due Date field. It cannot be empty.")
         return
     else:
         due_date = due_date_entry.get_date()
     if due_time_hr_combobox.get() == "":
-        messagebox.showwarning(title="Due Time Hour Empty", message="Please enter a Due Time Hour in the Due Time Hour field. It cannot be empty.")
+        show_error_msg("Due Time Hour Empty", "Please enter a Due Time Hour in the Due Time Hour field. It cannot be empty.")
         return
     else:
         due_time_hr = due_time_hr_combobox.get()
     if due_time_min_combobox.get() == "":
-        messagebox.showwarning(title="Due Time minute Empty", message="Please enter a Due Time minute in the Due Time Hour field. It cannot be empty.")
+        show_error_msg("Due Time minute Empty", "Please enter a Due Time minute in the Due Time Hour field. It cannot be empty.")
         return
     else:
         due_time_min = due_time_min_combobox.get()
     if due_time_am_pm_combobox.get() == "":
-        messagebox.showwarning(title="Due Time AM/PM Empty", message="Please enter a Due Time AM/PM in the Due Time Hour field. It cannot be empty.")
+        show_error_msg("Due Time AM/PM Empty", "Please enter a Due Time AM/PM in the Due Time Hour field. It cannot be empty.")
         return
     else:
         due_time_am_pm = due_time_am_pm_combobox.get()
     due_time = str(f"{due_time_hr}:{due_time_min} {due_time_am_pm}")
     if priority_combobox.get() == "":
-        messagebox.showwarning(title="Priority Empty", message="Please enter a Priority in the Priority field. It cannot be empty.")
+        show_error_msg("Priority Empty", "Please enter a Priority in the Priority field. It cannot be empty.")
         return
     else:
         priority = priority_combobox.get()
     if status_combobox.get() == "":
-        messagebox.showwarning(title="Status Empty", message="Please enter a Status in the Status field. It cannot be empty.")
+        show_error_msg("Status Empty", "Please enter a Status in the Status field. It cannot be empty.")
         return
     else:
         status = status_combobox.get()
     if task_type_combobox.get() == "":
-        messagebox.showwarning(title="Task Type Empty", message="Please Enter Title in the Title Entry")
+        show_error_msg("Task Type Empty", "Please Enter Title in the Title Entry")
         return
     else:
         task_type = task_type_combobox.get()
 
     result = get_task(f"fetch_tasks|{username}")
     if result is None:
-        messagebox.showwarning(title="Task Fetching Failed", message=f"Fetching tasks failed due to an Error")
+        show_error_msg("Task Fetching Failed", f"Fetching tasks failed due to an Error")
     else:
         for task in result:
             if task.task_id == obj.task_id:
@@ -592,22 +633,29 @@ def save_change_work(frame, username, title_entry, description_text, due_date_en
                 break
     result = out_communication(f"update_task|{obj.task_id}|{title}|{description}|{due_date}|{due_time}|{priority}|{status}|{task_type}")
     if result is True:
-        messagebox.showinfo(title="Task Updated", message=f"Task\n{title}\nupdated successfully.")
+        show_info_msg("Task Updated", f"Task\n{title}\nupdated successfully.")
     else:
-        messagebox.showwarning(title="Task Update Failed", message=f"Task update failed due to an Error")
+        show_error_msg("Task Update Failed", "Task update failed due to an Error")
     dashboard(frame, username)
 
 def delete_task_work(frame, username, obj):
-    frame.pack_forget()
-    answer = messagebox.askyesno(title="Confirm Remove Task",message=f"Do You want to Remove Task\n{obj.title}")
-    if answer:
-        result = out_communication(f"delete_task|{obj.task_id}")
-        if result is True:
-            messagebox.showinfo(title="Task Deleted", message="Task has been Deleted successfully.")
+    if frame and frame.winfo_exists():
+        frame.pack_forget()
+    try:
+        answer = show_yes_no_msg("Confirm Remove Task", f"Do You want to Remove Task\n{obj.title}")
+        if frame and frame.winfo_exists():
+            if answer:
+                result = out_communication(f"delete_task|{obj.task_id}")
+                if result is True:
+                    show_info_msg("Task Deleted", "Task has been Deleted successfully.")
+                else:
+                    show_error_msg("Task Deletion Failed", "Task deletion failed due to an Error")
+            else:
+                show_info_msg("Operation Cancelled", f"Operation to Remove Task\n{obj.title}\nhas been Cancelled")
         else:
-            messagebox.showwarning(title="Task Deletion Failed", message=f"Task deletion failed due to an Error")
-    else:
-        messagebox.showinfo(title="Operation Cancelled",message=f"Operation to Remove Task\n{obj.title}\nhas been Cancelled")
+            window.destroy()
+    except Exception:
+        return
 
     dashboard(frame, username)
 
@@ -638,6 +686,117 @@ def out_communication(message):
     client.send(message.encode())
     return in_communication()
 
+def show_info_msg(title, message):
+    msg_window = Toplevel(window)
+    msg_window.title("Message")
+    msg_window.config(background='#0D0527')
+
+    width, height = 600, 350
+    screen_w = msg_window.winfo_screenwidth()
+    screen_h = msg_window.winfo_screenheight()
+    x = (screen_w - width) // 2
+    y = (screen_h - height) // 2
+    msg_window.geometry(f"{width}x{height}+{x}+{y}")
+
+    img = Image.open(info_img)
+    img = img.resize((150, 150))
+    icon = ImageTk.PhotoImage(img)
+
+    icon_label = Label(msg_window, image=icon, bg="#0D0527")
+    icon_label.pack()
+
+    title_label = Label(msg_window, text=title, font=("Ariel", 25, "bold"), fg='white', bg="#0D0527")
+    title_label.pack()
+
+    msg_label = Label(msg_window, text=message, font=("Ariel", 20, "bold"), fg='white', bg="#0D0527")
+    msg_label.pack()
+
+    ok_button = Button(msg_window, text="Ok", font=("Ariel", 20, "bold"), fg='black', bg='#4ECDC4',activebackground="#292F36", activeforeground="#F5EEDC",width=12 ,height=2, command=lambda: msg_window.destroy())
+    ok_button.pack(pady=20)
+    msg_window.grab_set()
+    msg_window.wait_window()
+
+def show_error_msg(title, message):
+    msg_window = Toplevel(window)
+    msg_window.title("Message")
+    msg_window.config(background='#0D0527')
+
+    width, height = 600, 350
+    screen_w = msg_window.winfo_screenwidth()
+    screen_h = msg_window.winfo_screenheight()
+    x = (screen_w - width) // 2
+    y = (screen_h - height) // 2
+    msg_window.geometry(f"{width}x{height}+{x}+{y}")
+
+    img = Image.open(error_img)
+    img = img.resize((150, 150))
+    icon = ImageTk.PhotoImage(img)
+
+    icon_label = Label(msg_window, image=icon, bg="#0D0527")
+    icon_label.pack()
+
+    title_label = Label(msg_window, text=title, font=("Ariel", 25, "bold"), fg='white', bg="#0D0527")
+    title_label.pack()
+
+    msg_label = Label(msg_window, text=message, font=("Ariel", 20, "bold"), fg='white', bg="#0D0527")
+    msg_label.pack()
+
+    ok_button = Button(msg_window, text="Ok", font=("Ariel", 20, "bold"), fg='black', bg='#4ECDC4',activebackground="#292F36", activeforeground="#F5EEDC",width=12 ,height=2, command=lambda: msg_window.destroy())
+    ok_button.pack(pady=20)
+    msg_window.grab_set()
+    msg_window.wait_window()
+
+def show_yes_no_msg(title, message):
+    msg_window = Toplevel(window)
+    msg_window.title("Message")
+    msg_window.config(background='#0D0527')
+
+    width, height = 600, 350
+    screen_w = msg_window.winfo_screenwidth()
+    screen_h = msg_window.winfo_screenheight()
+    x = (screen_w - width) // 2
+    y = (screen_h - height) // 2
+    msg_window.geometry(f"{width}x{height}+{x}+{y}")
+
+    img = Image.open(ask_yes_no_img)
+    img = img.resize((150, 150))
+    icon = ImageTk.PhotoImage(img)
+
+    icon_label = Label(msg_window, image=icon, bg="#0D0527")
+    icon_label.pack()
+
+    title_label = Label(msg_window, text=title, font=("Ariel", 25, "bold"), fg='white', bg="#0D0527")
+    title_label.pack()
+
+    msg_label = Label(msg_window, text=message, font=("Ariel", 20, "bold"), fg='white', bg="#0D0527")
+    msg_label.pack()
+
+    result = {"value": None}
+    def on_yes():
+        result["value"] = True
+        msg_window.destroy()
+    def on_no():
+        result["value"] = False
+        msg_window.destroy()
+
+    button_frame = Frame(msg_window, bg='#0D0527')
+    button_frame.pack()
+
+    no_button = Button(button_frame, text="No", font=("Ariel", 20, "bold"), fg='black', bg='#4ECDC4',
+                       activebackground="#292F36", activeforeground="#F5EEDC", width=8 ,height=2, command=on_no)
+    no_button.grid(row=0, column=0,padx=10, pady=20)
+
+    yes_button = Button(button_frame, text="Yes", font=("Ariel", 20, "bold"), fg='black', bg='#4ECDC4',
+                       activebackground="#292F36", activeforeground="#F5EEDC",width=8 ,height=2, command=on_yes)
+    yes_button.grid(row=0, column=1, padx=10, pady=20, sticky='w')
+
+    msg_window.grab_set()
+    msg_window.wait_window()
+
+    return result["value"]
+
 myframe = Frame()
 login(myframe)
 window.mainloop()
+
+
